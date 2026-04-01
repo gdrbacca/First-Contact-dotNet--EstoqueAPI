@@ -1,0 +1,18 @@
+version: '3.9'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    container_name: VendasEstoqueWebApi
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=f7hxT8wJP7*
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    restart: unless-stopped
+
+volumes:
+  sqlserver-data:

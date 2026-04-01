@@ -1,0 +1,6 @@
+@ApiWeb8_Estoque_HostAddress = http://localhost:5006
+
+GET {{ApiWeb8_Estoque_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

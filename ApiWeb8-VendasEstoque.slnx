@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/App/">
+    <Project Path="ApiWeb8-Estoque/ApiWeb8-Estoque.csproj" Id="84a1621c-c733-4cd1-afeb-3389390cd0f3" />
+    <Project Path="ApiWeb8-Vendas/ApiWeb8-Vendas.csproj" />
+  </Folder>
+  <Folder Name="/Modulos-Estoque/" />
+  <Folder Name="/Modulos-Estoque/Dominio/">
+    <Project Path="Estoque.Dominio.Mediador/Estoque.Dominio.Mediador.csproj" Id="35b5466c-acbd-46ac-b70c-a736bf0d997c" />
+    <Project Path="Estoque.Dominio.Servicos/Estoque.Dominio.Servicos.csproj" Id="51c721a6-7da0-4582-ad0b-118395d8fe80" />
+    <Project Path="Estoque.Dominio/Estoque.Dominio.csproj" Id="cb252ea8-71f2-4237-9ae3-2995946ae2b0" />
+  </Folder>
+  <Folder Name="/Modulos-Estoque/Infra/">
+    <Project Path="Estoque.Infra.Database/Estoque.Infra.Database.csproj" Id="927b93ec-aa68-427d-8d2a-04f180229973" />
+  </Folder>
+  <Folder Name="/Modulos-Shared/">
+    <Project Path="Mensageria.Contratos/Mensageria.Contratos.csproj" Id="34fdc98c-f2ab-4c12-8375-344c670c6714" />
+    <Project Path="Shared.Dominio/Shared.Dominio.csproj" Id="aa1d81ff-90e2-454b-8323-f4fcd90adc2c" />
+  </Folder>
+  <Folder Name="/Modulos-Venda/" />
+  <Folder Name="/Modulos-Venda/Dominio/">
+    <Project Path="Vendas.Dominio.Mediador/Vendas.Dominio.Mediador.csproj" Id="fce906bf-3698-49d2-ad42-c50fdd4ffae1" />
+    <Project Path="Vendas.Dominio.Servico/Vendas.Dominio.Servico.csproj" Id="700ae994-a4dc-4740-a533-151a80254dbd" />
+    <Project Path="Vendas.Dominio/Vendas.Dominio.csproj" />
+  </Folder>
+  <Folder Name="/Modulos-Venda/Infra/">
+    <Project Path="Vendas.Infra.Database/Vendas.Infra.Database.csproj" />
+    <Project Path="Vendas.Infra.HTTP/Vendas.Infra.HTTP.csproj" Id="796a4fa4-be2b-4453-82a7-f2ac651a3588" />
+  </Folder>
+</Solution>
