@@ -1,26 +1,13 @@
 ## My First Contact with .NET
 
-<link rel="stylesheet" type='text/css' href="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css" /> 
-
-<style>
-    i { font-size: 50px; }
-    .p-icons { 
-        display: flex; 
-        justify-content: center;
-        gap: 15px; 
-        img { width: 50px; };
-        margin-bottom: 48px;
-    }
-</style>
-
 <br/>
 
 <p>Its a simple project made in <strong>.NET 8</strong>, using EntityFramework and SQLServer. <br/>Consists in 2 web APIs (Vendas and Estoque), where you can add products, close orders and handle the stock.</p>
 
-<div class="p-icons">
-    <img src="https://skillicons.dev/icons?i=dotnet"></img>    
-    <i class="devicon-entityframeworkcore-plain colored"></i>
-    <i class="devicon-microsoftsqlserver-plain colored"></i>
+<div display="flex" align="center">
+    <img heigth="50" width="50" src="https://raw.githubusercontent.com/marwin1991/profile-technology-icons/refs/heads/main/icons/_net_core.png"></img>    
+    <img heigth="50" width="50" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/entityframeworkcore/entityframeworkcore-original.svg" />
+    <img heigth="50" width="50" src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/microsoftsqlserver/microsoftsqlserver-plain.svg" />
 </div>
 
 
