@@ -6,7 +6,7 @@ services:
     container_name: VendasEstoqueWebApi
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=f7hxT8wJP7*
+      - MSSQL_SA_PASSWORD=123456
       - MSSQL_PID=Developer
     ports:
       - "1433:1433"
