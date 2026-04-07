@@ -10,8 +10,8 @@ namespace Estoque.Dominio.Interfaces;
 
 public interface IProdutoEstoqueServico
 {
-    Task<List<ProdutoEstoqueComProdutoContrato>> ObterProdutosEstoqueAsync(CancellationToken cancellationToken = default);
-    Task<ProdutoEstoqueComProdutoContrato> ObterProdutoEstoquePorIdProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default);
-    Task<ProdutoEstoqueQuantidadeContrato> ObterQuantidadeProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default);
+    Task<List<ProdutoEstoqueComProdutoContrato>?> ObterProdutosEstoqueAsync(CancellationToken cancellationToken = default);
+    Task<ProdutoEstoqueComProdutoContrato?> ObterProdutoEstoquePorIdProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default);
+    Task<ProdutoEstoqueQuantidadeContrato?> ObterQuantidadeProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default);
     Task<RetornoAlterarEstoqueContrato> AlterarEstoqueAsync(AlterarEstoqueContrato produtoEstoque, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,4 @@
-﻿using Estoque.Dominio.Contratos.ProdutoEstoque;
+using Estoque.Dominio.Contratos.ProdutoEstoque;
 using Estoque.Dominio.Interfaces;
 using Estoque.Infra.Database.Contextos;
 using Microsoft.EntityFrameworkCore;
@@ -26,21 +26,21 @@ public class ProdutoEstoqueServico : IProdutoEstoqueServico
         _movimentoEstoque = movimento;
     }
 
-    public async Task<List<ProdutoEstoqueComProdutoContrato>> ObterProdutosEstoqueAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ProdutoEstoqueComProdutoContrato>?> ObterProdutosEstoqueAsync(CancellationToken cancellationToken = default)
     {
         var resultado = await _context.ProdutoEstoque
             .ComProduto(_context)
             .ToListAsync(cancellationToken);
 
-        if (resultado is null)
+        if (resultado is null || !resultado.Any())
         {
-            throw new Exception("Estoque não encontrado.");
+            return null;
         }
 
         return resultado;
     }
 
-    public async Task<ProdutoEstoqueComProdutoContrato> ObterProdutoEstoquePorIdProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default)
+    public async Task<ProdutoEstoqueComProdutoContrato?> ObterProdutoEstoquePorIdProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default)
     {
         var resultado = await _context.ProdutoEstoque
             .Where(x => x.ProdutoId == idProduto)
@@ -49,13 +49,13 @@ public class ProdutoEstoqueServico : IProdutoEstoqueServico
 
         if (resultado is null)
         {
-            throw new Exception("Estoque não encontrado.");
+            return null;
         }
 
         return resultado;
     }
 
-    public async Task<ProdutoEstoqueQuantidadeContrato> ObterQuantidadeProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default)
+    public async Task<ProdutoEstoqueQuantidadeContrato?> ObterQuantidadeProdutoAsync(Guid idProduto, CancellationToken cancellationToken = default)
     {
         var resultado = await _context.ProdutoEstoque
             .Where(pe => pe.ProdutoId == idProduto)
@@ -64,7 +64,7 @@ public class ProdutoEstoqueServico : IProdutoEstoqueServico
 
         if (resultado is null)
         {
-            throw new Exception("Estoque não encontrado.");
+            return null;
         }
 
         return resultado;
@@ -72,84 +72,87 @@ public class ProdutoEstoqueServico : IProdutoEstoqueServico
 
     public async Task<RetornoAlterarEstoqueContrato> AlterarEstoqueAsync(AlterarEstoqueContrato produtoEstoque, CancellationToken cancellationToken = default)
     {
-        ProdutoEstoque newProdutoEstoque;
-        CriarMovimentoEstoqueContrato newMovimentoEstoque;
-        string mensagemRetorno = "";
-
-        switch (produtoEstoque.tipoMovimento)
+        try
         {
-            case TipoMovimentoEstoque.CriacaoProduto:
-                newProdutoEstoque = new ProdutoEstoque(produtoEstoque.produtoId, produtoEstoque.quantidade, produtoEstoque.estoqueMinimo ?? 0, DateTime.MinValue);
+            switch (produtoEstoque.tipoMovimento)
+            {
+                case TipoMovimentoEstoque.CriacaoProduto:
+                    var newProdutoEstoque = new ProdutoEstoque(produtoEstoque.produtoId, produtoEstoque.quantidade, produtoEstoque.estoqueMinimo ?? 0, DateTime.MinValue);
 
-                _context.ProdutoEstoque.Add(newProdutoEstoque);
-                await _context.SaveChangesAsync(cancellationToken);
+                    _context.ProdutoEstoque.Add(newProdutoEstoque);
+                    await _context.SaveChangesAsync(cancellationToken);
 
-                newMovimentoEstoque = new CriarMovimentoEstoqueContrato(
-                    newProdutoEstoque.Id, TipoMovimentoEstoque.CriacaoProduto, newProdutoEstoque.QuantidadeDisponivel, null);
+                    var newMovimentoEstoque = new CriarMovimentoEstoqueContrato(
+                        newProdutoEstoque.Id, TipoMovimentoEstoque.CriacaoProduto, newProdutoEstoque.QuantidadeDisponivel, null);
 
-                await _movimentoEstoque.GravarMovimentoEstoqueAsync(newMovimentoEstoque, cancellationToken);
+                    await _movimentoEstoque.GravarMovimentoEstoqueAsync(newMovimentoEstoque, cancellationToken);
 
-                mensagemRetorno = "Produto criado no estoque.";
-            break;
+                    return new RetornoAlterarEstoqueContrato(true, "Produto criado no estoque.");
 
-            case TipoMovimentoEstoque.SaidaProduto:
-                var estoque = await this.ObterProdutoEstoquePorIdProdutoAsync(produtoEstoque.produtoId, cancellationToken);
-                int novaQuantidade = estoque.QuantidadeDisponivel - produtoEstoque.quantidade;
-                DateTime dataAtualizacao = DateTime.UtcNow;
+                case TipoMovimentoEstoque.SaidaProduto:
+                    var estoque = await this.ObterProdutoEstoquePorIdProdutoAsync(produtoEstoque.produtoId, cancellationToken);
+                    if (estoque == null) throw new Exception("Produto em estoque não encontrado.");
+                    int novaQuantidade = estoque.QuantidadeDisponivel - produtoEstoque.quantidade;
+                    if (novaQuantidade < 0) throw new Exception("Quantidade em estoque insuficiente para a saída.");
+                    DateTime dataAtualizacao = DateTime.UtcNow;
 
-                await _context.ProdutoEstoque
-                    .Where(pe => pe.Id == estoque.Id)
-                    .ExecuteUpdateAsync(setter => setter
-                        .SetProperty(p => p.QuantidadeDisponivel, novaQuantidade)
-                        .SetProperty(p => p.UltimaAtualizacao, dataAtualizacao));
+                    await _context.ProdutoEstoque
+                        .Where(pe => pe.Id == estoque.Id)
+                        .ExecuteUpdateAsync(setter => setter
+                            .SetProperty(p => p.QuantidadeDisponivel, novaQuantidade)
+                            .SetProperty(p => p.UltimaAtualizacao, dataAtualizacao));
 
-                newMovimentoEstoque = new CriarMovimentoEstoqueContrato(
-                    estoque.Id, TipoMovimentoEstoque.SaidaProduto, produtoEstoque.quantidade, produtoEstoque.pedidoId);
+                    var newMovimentoEstoqueSaida = new CriarMovimentoEstoqueContrato(
+                        estoque.Id, TipoMovimentoEstoque.SaidaProduto, produtoEstoque.quantidade, produtoEstoque.pedidoId);
 
-                await _movimentoEstoque.GravarMovimentoEstoqueAsync(newMovimentoEstoque, cancellationToken);
+                    await _movimentoEstoque.GravarMovimentoEstoqueAsync(newMovimentoEstoqueSaida, cancellationToken);
 
-                mensagemRetorno = "Quantidade subtraída do estoque.";
-                break;
+                    return new RetornoAlterarEstoqueContrato(true, "Quantidade subtraída do estoque.");
 
-            case TipoMovimentoEstoque.EntradaProduto:
-                var estoque2 = await this.ObterProdutoEstoquePorIdProdutoAsync(produtoEstoque.produtoId, cancellationToken);
-                int novaQuantidade2 = estoque2.QuantidadeDisponivel + produtoEstoque.quantidade;
-                DateTime dataAtualizacao2 = DateTime.UtcNow;
+                case TipoMovimentoEstoque.EntradaProduto:
+                    var estoqueEntrada = await this.ObterProdutoEstoquePorIdProdutoAsync(produtoEstoque.produtoId, cancellationToken);
+                    if (estoqueEntrada == null) throw new Exception("Produto em estoque não encontrado.");
+                    int novaQuantidadeEntrada = estoqueEntrada.QuantidadeDisponivel + produtoEstoque.quantidade;
+                    DateTime dataAtualizacaoEntrada = DateTime.UtcNow;
 
-                await _context.ProdutoEstoque
-                    .Where(pe => pe.Id == estoque2.Id)
-                    .ExecuteUpdateAsync(setter => setter
-                        .SetProperty(p => p.QuantidadeDisponivel, novaQuantidade2)
-                        .SetProperty(p => p.UltimaAtualizacao, dataAtualizacao2));
+                    await _context.ProdutoEstoque
+                        .Where(pe => pe.Id == estoqueEntrada.Id)
+                        .ExecuteUpdateAsync(setter => setter
+                            .SetProperty(p => p.QuantidadeDisponivel, novaQuantidadeEntrada)
+                            .SetProperty(p => p.UltimaAtualizacao, dataAtualizacaoEntrada));
 
-                newMovimentoEstoque = new CriarMovimentoEstoqueContrato(
-                    estoque2.Id, TipoMovimentoEstoque.EntradaProduto, produtoEstoque.quantidade, null);
+                    var newMovimentoEstoqueEntrada = new CriarMovimentoEstoqueContrato(
+                        estoqueEntrada.Id, TipoMovimentoEstoque.EntradaProduto, produtoEstoque.quantidade, null);
 
-                await _movimentoEstoque.GravarMovimentoEstoqueAsync(newMovimentoEstoque, cancellationToken);
+                    await _movimentoEstoque.GravarMovimentoEstoqueAsync(newMovimentoEstoqueEntrada, cancellationToken);
 
-                mensagemRetorno = "Quantidade atribuída ao estoque.";
-                break;
+                    return new RetornoAlterarEstoqueContrato(true, "Quantidade atribuída ao estoque.");
 
-            case TipoMovimentoEstoque.ExclusaoProduto:
-                var estoque3 = await this.ObterProdutoEstoquePorIdProdutoAsync(produtoEstoque.produtoId, cancellationToken);
-                var produtoEstoqueToDelete = await _context.ProdutoEstoque
-                    .Where(pe => pe.Id == estoque3.Id)
-                    .FirstOrDefaultAsync(cancellationToken);
+                case TipoMovimentoEstoque.ExclusaoProduto:
+                    var estoqueExclusao = await this.ObterProdutoEstoquePorIdProdutoAsync(produtoEstoque.produtoId, cancellationToken);
+                    if (estoqueExclusao == null) throw new Exception("Produto em estoque não encontrado.");
+                    var produtoEstoqueToDelete = await _context.ProdutoEstoque
+                        .Where(pe => pe.Id == estoqueExclusao.Id)
+                        .FirstOrDefaultAsync(cancellationToken);
 
-                if (produtoEstoqueToDelete is null)
-                {
-                    throw new Exception("Estoque não encontrado.");
-                }
+                    if (produtoEstoqueToDelete is null)
+                    {
+                        throw new Exception("Estoque não encontrado.");
+                    }
 
-                _context.Remove(produtoEstoqueToDelete);
-                await _context.SaveChangesAsync(cancellationToken);
+                    _context.Remove(produtoEstoqueToDelete);
+                    await _context.SaveChangesAsync(cancellationToken);
 
-                mensagemRetorno = "Produto excluído do estoque.";
-                break;
-            default: break;
+                    return new RetornoAlterarEstoqueContrato(true, "Produto excluído do estoque.");
+
+                default:
+                    return new RetornoAlterarEstoqueContrato(false, "Tipo de movimento de estoque inválido.");
+            }
         }
-
-        return new RetornoAlterarEstoqueContrato(mensagemRetorno);
+        catch (Exception ex)
+        {
+            return new RetornoAlterarEstoqueContrato(false, ex.Message);
+        }
     }
 }
 
@@ -175,48 +178,3 @@ public static class ProdutoEstoqueExtensions
             ));
     }
 }
-
-//var estoques = await _context.ProdutoEstoque
-//    .Join(_context.Set<ProdutoEntidade>(),
-//          pe => pe.ProdutoId,
-//          p => p.Id,
-//          (pe, p) => new { ProdutoEstoque = pe, Produto = p })
-//    .Where(x => x.ProdutoEstoque.Quantidade < 10)
-//    .Select(x => new
-//    {
-//        x.ProdutoEstoque.Id,
-//        ProdutoNome = x.Produto.Nome,
-//        x.ProdutoEstoque.Quantidade
-//    })
-//    .ToListAsync();
-
-
-//var estoques = await _context.ProdutoEstoque
-//    .Include(pe => pe.Produto)                  // ← usa a navigation property
-//    .Where(pe => pe.Quantidade < 10)
-//    .ToListAsync();
-
-
-//var bateria = await _context.Baterias
-//            .Where(x => x.Id == bateriaId)
-//            .Select(x => new RetornoBateriaContrato(
-//                x.Id,
-//                x.Descricao,
-//                x.DataHora,
-//                x.Equipes.Select(x => new Contratos.Equipe.ObterEquipeContrato(x.Nome, x.Atletas, x.Raia)).ToList()))
-//            .FirstOrDefaultAsync(cancellationToken);
-
-
-//var resultado = await _context.ProdutoEstoque
-//    .Join(_context.Set<ProdutoEntidade>(),
-//          pe => pe.ProdutoId,
-//          p => p.Id,
-//          (pe, p) => new
-//          {
-//              pe.Id,
-//              pe.Quantidade,
-//              ProdutoNome = p.Nome,
-//              pe.ProdutoId
-//          })
-//    .Where(x => x.Quantidade < 10)
-//    .ToListAsync();

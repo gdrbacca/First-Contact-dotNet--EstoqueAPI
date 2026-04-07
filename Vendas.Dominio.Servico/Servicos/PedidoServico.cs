@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MassTransit;
+using Vendas.Dominio.Contratos;
 using Vendas.Dominio.Contratos.Pedido;
 using Vendas.Dominio.Contratos.Produto;
 using Vendas.Dominio.Interfaces;
@@ -27,7 +28,7 @@ public class PedidoServico : IPedidoServico
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task<RetornoBuscarPedidoContrato> BuscarPedidoPorId(Guid id, CancellationToken cancellationToken)
+    public async Task<RetornoBuscarPedidoContrato?> BuscarPedidoPorId(Guid id, CancellationToken cancellationToken)
     {
         var retorno = await _context.Pedidos
             .Where(p => p.Id == id)
@@ -44,15 +45,10 @@ public class PedidoServico : IPedidoServico
             ))
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (retorno is null)
-        {
-            throw new Exception("Pedido não encontrado.");
-        }
-
         return retorno;
     }
 
-    public async Task<List<RetornoBuscarPedidoContrato>> BuscarTodosPedidos(CancellationToken cancellationToken)
+    public async Task<List<RetornoBuscarPedidoContrato>?> BuscarTodosPedidos(CancellationToken cancellationToken)
     {
         var retorno = await _context.Pedidos
             .Select(p => new RetornoBuscarPedidoContrato(
@@ -68,62 +64,73 @@ public class PedidoServico : IPedidoServico
             ))
             .ToListAsync(cancellationToken);
 
-        if (retorno is null)
-        {
-            throw new Exception("Pedido não encontrado.");
-        }
-
         return retorno;
     }
 
-    public async Task CriarPedidoAsync(CriarPedidoContrato pedidoParam, CancellationToken cancellationToken)
+    public async Task<RetornoBaseContrato> CriarPedidoAsync(CriarPedidoContrato pedidoParam, CancellationToken cancellationToken)
     {
-        var listItens = new List<ItemPedido>(pedidoParam.itensPedido.Count());
-        foreach (var item in pedidoParam.itensPedido)
+        try
         {
-            listItens.Add(new ItemPedido(item.idProduto, item.quantidade, item.valorTotal)); 
-        }
-
-        for (int i = 0; i < listItens.Count(); i++)
-        {
-            Guid idProduto = listItens[i].ProdutoId;
-            var quantidadeEstoque = await _httpClient.ObterQuantidadeEstoqueProdutoAsync(idProduto, cancellationToken);
-
-            if ((quantidadeEstoque.QuantidadeDisponivel < quantidadeEstoque.QuantidadeMinima) || (listItens[i].Quantidade >= quantidadeEstoque.QuantidadeDisponivel))
+            var listItens = new List<ItemPedido>(pedidoParam.itensPedido.Count());
+            foreach (var item in pedidoParam.itensPedido)
             {
-                throw new Exception("Um ou mais produtos está com estoque insuficiente.");
+                listItens.Add(new ItemPedido(item.idProduto, item.quantidade, item.valorTotal)); 
             }
+
+            for (int i = 0; i < listItens.Count(); i++)
+            {
+                Guid idProduto = listItens[i].ProdutoId;
+                var quantidadeEstoque = await _httpClient.ObterQuantidadeEstoqueProdutoAsync(idProduto, cancellationToken);
+
+                if ((quantidadeEstoque.QuantidadeDisponivel < quantidadeEstoque.QuantidadeMinima) || (listItens[i].Quantidade >= quantidadeEstoque.QuantidadeDisponivel))
+                {
+                    return new RetornoBaseContrato(true, "Produto com estoque insuficiente.", idProduto);
+                }
+            }
+            var pedido = new Pedido(pedidoParam.total, pedidoParam.dataCriacao, listItens);
+
+            _context.Pedidos.Add(pedido);
+            await _context.SaveChangesAsync(cancellationToken); // aqui ele ja adiciona os itens e preenche os id's
+
+            var pedidoCriadoEvent = new PedidoCriadoEvent(
+                pedido.Id,
+                pedido.DataCriacao,
+                pedido.ItensPedido.Select(i => new ItemPedidoEvent(
+                    i.ProdutoId,
+                    i.Quantidade
+                )).ToList()
+            );
+
+            await _publishEndpoint.Publish(pedidoCriadoEvent, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken); // segundo saveAsync para validar o publish
+            return new RetornoBaseContrato(true, "Pedido criado com sucesso.", pedido.Id);
         }
-        var pedido = new Pedido(pedidoParam.total, pedidoParam.dataCriacao, listItens);
-
-        _context.Pedidos.Add(pedido);
-        await _context.SaveChangesAsync(cancellationToken); // aqui ele ja adiciona os itens e preenche os id's
-
-        var pedidoCriadoEvent = new PedidoCriadoEvent(
-            pedido.Id,
-            pedido.DataCriacao,
-            pedido.ItensPedido.Select(i => new ItemPedidoEvent(
-                i.ProdutoId,
-                i.Quantidade
-            )).ToList()
-        );
-
-        await _publishEndpoint.Publish(pedidoCriadoEvent, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken); // segundo saveAsync para validar o publish
+        catch (Exception ex)
+        {
+            return new RetornoBaseContrato(false, ex.Message);
+        }
     }
 
-    public async Task DeletarPedidoAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<RetornoBaseContrato> DeletarPedidoAsync(Guid id, CancellationToken cancellationToken)
     {
-        var pedido = await _context.Pedidos
-            .Where(x => x.Id == id)
-            .FirstOrDefaultAsync();
-
-        if (pedido is null)
+        try
         {
-            throw new Exception("Pedido não encontrado.");
-        }
+            var pedido = await _context.Pedidos
+                .Where(x => x.Id == id)
+                .FirstOrDefaultAsync();
 
-        _context.Pedidos.Remove(pedido);
-        await _context.SaveChangesAsync(cancellationToken);
+            if (pedido is null)
+            {
+                return new RetornoBaseContrato(false, "Pedido não encontrado.");
+            }
+
+            _context.Pedidos.Remove(pedido);
+            await _context.SaveChangesAsync(cancellationToken);
+            return new RetornoBaseContrato(true, "Pedido excluido com sucesso.");
+        }
+        catch (Exception ex)
+        {
+            return new RetornoBaseContrato(false, ex.Message);
+        }
     }
 }

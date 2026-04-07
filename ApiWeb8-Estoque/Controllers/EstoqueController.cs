@@ -21,29 +21,77 @@ namespace ApiWeb8_Estoque.Controllers
         [HttpGet]
         public async Task<IActionResult> BuscarProdutos(CancellationToken cancellationToken)
         {
-            var result = await produtoEstoque.ObterProdutosEstoqueAsync(cancellationToken);
-            return Ok(result);
+            try
+            {
+                var result = await produtoEstoque.ObterProdutosEstoqueAsync(cancellationToken);
+                if (result == null || !result.Any())
+                {
+                    return NoContent();
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar produtos: {ex.Message}");
+            }
         }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> BuscarProdutoPorId([FromRoute]Guid id, CancellationToken cancellationToken)
         {
-            var result = await produtoEstoque.ObterProdutoEstoquePorIdProdutoAsync(id, cancellationToken);
-            return Ok(result);
+            try
+            {
+                var result = await produtoEstoque.ObterProdutoEstoquePorIdProdutoAsync(id, cancellationToken);
+                if (result == null)
+                {
+                    return NotFound();
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar produto por ID: {ex.Message}");
+            }
         }
 
         [HttpGet("quantidade/{id}")]
         public async Task<IActionResult> BuscarQuantidadeProdutoPorId([FromRoute] Guid id, CancellationToken cancellationToken)
         {
-            var result = await produtoEstoque.ObterQuantidadeProdutoAsync(id, cancellationToken);
-            return Ok(result);
+            try
+            {
+                var result = await produtoEstoque.ObterQuantidadeProdutoAsync(id, cancellationToken);
+                if (result == null)
+                {
+                    return NotFound();
+                }
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao buscar quantidade do produto por ID: {ex.Message}");
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> AlterarEstoque([FromBody] AlterarEstoqueContrato estoque, CancellationToken cancellationToken)
         {
-            var retorno = await produtoEstoque.AlterarEstoqueAsync(estoque, cancellationToken);
-            return Ok(retorno);
+            try
+            {
+                var retorno = await produtoEstoque.AlterarEstoqueAsync(estoque, cancellationToken);
+
+                if (retorno.sucesso)
+                {
+                    return Ok(retorno);
+                }
+                else
+                {
+                    return BadRequest(retorno.mensagemErro);
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, $"Erro ao alterar estoque: {ex.Message}");
+            }
         }
 
     }

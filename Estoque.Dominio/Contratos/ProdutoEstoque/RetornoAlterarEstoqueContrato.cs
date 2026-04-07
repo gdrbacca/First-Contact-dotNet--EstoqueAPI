@@ -7,5 +7,6 @@ using System.Threading.Tasks;
 namespace Estoque.Dominio.Contratos.ProdutoEstoque;
 
 public record RetornoAlterarEstoqueContrato(
-    string mensagem
+    bool sucesso,
+    string mensagemErro
 );
